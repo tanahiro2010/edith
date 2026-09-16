@@ -1,0 +1,3 @@
+[submodule "backend/face_api"]
+	path = backend/face_api
+	url = https://github.com/tanahiro2010/face_auth_api.git

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E.D.I.T.H Voice Agent — Text Tester</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: system-ui, sans-serif; max-width: 760px; margin: 0 auto; padding: 1.5rem; }
+      h1 { font-size: 1.25rem; }
+      #log { border: 1px solid #8884; border-radius: 8px; padding: 1rem; min-height: 320px; display: flex; flex-direction: column; gap: .6rem; }
+      .msg { padding: .5rem .75rem; border-radius: 10px; max-width: 85%; white-space: pre-wrap; }
+      .user { align-self: flex-end; background: #3b82f6; color: #fff; }
+      .agent { align-self: flex-start; background: #8882; }
+      .meta { font-size: .75rem; opacity: .7; align-self: flex-start; }
+      form { display: flex; gap: .5rem; margin-top: .75rem; }
+      input { flex: 1; padding: .6rem; border-radius: 8px; border: 1px solid #8886; }
+      button { padding: .6rem 1rem; border-radius: 8px; border: none; background: #3b82f6; color: #fff; cursor: pointer; }
+      .hint { font-size: .8rem; opacity: .7; }
+    </style>
+  </head>
+  <body>
+    <h1>🧠 E.D.I.T.H Voice Agent (Text Tester)</h1>
+    <p class="hint">
+      例: 「田中さんを覚えて」「会話記録開始」「記録終了」「昨日田中さんと何話した？」
+    </p>
+    <div id="log"></div>
+    <form id="form">
+      <input id="input" placeholder="指示を入力…" autocomplete="off" autofocus />
+      <button type="submit">送信</button>
+      <button type="button" id="mic" title="押している間だけ録音（Push-to-Talk）">🎤</button>
+    </form>
+    <p class="hint">🎤 ボタンを<b>押している間だけ録音</b>し、離すとローカルSTT(whisper)で文字起こし→Agentへ送ります。</p>
+    <script>
+      const log = document.getElementById("log");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      let sessionId = null;
+
+      function add(text, cls) {
+        const div = document.createElement("div");
+        div.className = "msg " + cls;
+        div.textContent = text;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+      }
+      function meta(text) {
+        const div = document.createElement("div");
+        div.className = "meta";
+        div.textContent = text;
+        log.appendChild(div);
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const content = input.value.trim();
+        if (!content) return;
+        add(content, "user");
+        input.value = "";
+
+        try {
+          const res = await fetch("/v1/agent/input", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId, type: "text", content }),
+          });
+          const data = await res.json();
+          sessionId = data.sessionId ?? sessionId;
+          add(data.message || "(応答なし)", "agent");
+          if (data.toolCalls?.length) {
+            meta("🔧 tools: " + data.toolCalls.map((t) => t.name).join(", "));
+          }
+          if (data.actions?.length) {
+            meta("📲 actions: " + data.actions.map((a) => a.type + "(" + a.id.slice(0, 8) + ")").join(", "));
+          }
+        } catch (err) {
+          add("エラー: " + err, "agent");
+        }
+      });
+
+      // --- Push-to-Talk（マイク録音 → /v1/agent/audio） ---
+      const mic = document.getElementById("mic");
+      let recorder = null, chunks = [];
+
+      async function startRec() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          recorder = new MediaRecorder(stream);
+          chunks = [];
+          recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+          recorder.onstop = async () => {
+            stream.getTracks().forEach((t) => t.stop());
+            const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+            meta("🎤 録音送信中… (" + Math.round(blob.size / 1024) + "KB)");
+            const fd = new FormData();
+            fd.append("audio", blob, "speech.webm");
+            if (sessionId) fd.append("sessionId", sessionId);
+            fd.append("language", "ja");
+            try {
+              const res = await fetch("/v1/agent/audio", { method: "POST", body: fd });
+              const data = await res.json();
+              sessionId = data.sessionId ?? sessionId;
+              if (data.transcript) add("🗣 " + data.transcript, "user");
+              add(data.message || "(応答なし)", "agent");
+              if (data.toolCalls?.length) meta("🔧 tools: " + data.toolCalls.map((t) => t.name).join(", "));
+              if (data.actions?.length) meta("📲 actions: " + data.actions.map((a) => a.type).join(", "));
+            } catch (err) {
+              add("エラー: " + err, "agent");
+            }
+          };
+          recorder.start();
+          mic.textContent = "⏺";
+        } catch (err) {
+          add("マイクにアクセスできません: " + err, "agent");
+        }
+      }
+      function stopRec() {
+        if (recorder && recorder.state !== "inactive") recorder.stop();
+        mic.textContent = "🎤";
+      }
+      mic.addEventListener("mousedown", startRec);
+      mic.addEventListener("mouseup", stopRec);
+      mic.addEventListener("mouseleave", stopRec);
+      mic.addEventListener("touchstart", (e) => { e.preventDefault(); startRec(); });
+      mic.addEventListener("touchend", (e) => { e.preventDefault(); stopRec(); });
+    </script>
+  </body>
+</html>

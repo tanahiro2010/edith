@@ -1,0 +1,12 @@
+[project]
+name = "edith-stt-service"
+version = "0.1.0"
+description = "E.D.I.T.H local Speech-to-Text service (faster-whisper). ローカルで文字起こしのみを行う軽量サービス。"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "faster-whisper>=1.0.3",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "python-multipart>=0.0.9",
+]

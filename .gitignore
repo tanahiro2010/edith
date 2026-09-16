@@ -1,0 +1,16 @@
+# --- OS / editor ---
+.DS_Store
+*.log
+
+# --- JetBrains / IDE ---
+.idea/
+*.iml
+
+# --- Python caches ---
+.ruff_cache/
+__pycache__/
+*.py[oc]
+
+# 秘密情報（各サービスの .gitignore でも除外しているが、念のためリポジトリ全体でも）
+.env
+!.env.example
