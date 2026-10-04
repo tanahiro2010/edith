@@ -220,21 +220,27 @@
   /* ---------- Sponsor CTA (top-right) ---------- */
   .sponsor-cta{
     position:fixed;top:14px;right:28px;z-index:52;
-    display:inline-flex;align-items:center;gap:9px;
-    font-size:13px;font-weight:700;letter-spacing:.5px;color:#fff;text-decoration:none;
-    background:linear-gradient(90deg,var(--blue),var(--green));
-    padding:9px 18px;border-radius:999px;box-shadow:var(--shadow);
-    transition:transform .25s var(--ease),box-shadow .25s var(--ease);
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:13px;font-weight:500;letter-spacing:.3px;color:var(--ink);text-decoration:none;
+    background:var(--bg);border:1px solid var(--line);
+    padding:8px 16px;border-radius:999px;box-shadow:var(--shadow);
+    transition:border-color .25s var(--ease),box-shadow .25s var(--ease);
   }
-  .sponsor-cta:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
-  .sponsor-cta .pulse{width:8px;height:8px;border-radius:50%;background:#fff;animation:ctapulse 1.6s ease infinite;}
-  .sponsor-cta small{font-weight:500;opacity:.85;font-size:11px;}
-  @keyframes ctapulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+  .sponsor-cta:hover{border-color:var(--blue);box-shadow:var(--shadow-lg);}
+  .sponsor-cta .pulse{width:7px;height:7px;border-radius:50%;background:var(--blue);}
+  .sponsor-cta small{font-weight:400;color:var(--sub);font-size:11px;}
 
   /* ---------- LT promo slide ---------- */
   .maybe-note{font-size:13px;color:var(--sub);margin-top:14px;}
   #s-lt .punch a{color:var(--blue);font-weight:700;text-decoration:none;}
   #s-lt .punch a:hover{text-decoration:underline;}
+
+  /* ---------- QR ---------- */
+  .qr-row{display:flex;align-items:center;gap:16px;margin-top:16px;}
+  .qr{flex:0 0 auto;width:118px;height:118px;background:#fff;border:1px solid var(--line);
+    border-radius:12px;padding:9px;box-shadow:var(--shadow);}
+  .qr img{display:block;width:100%;height:100%;}
+  .qr-row .qr-cap{font-size:13px;color:var(--sub);line-height:1.6;}
 
   @media (max-width:760px){
     .slide{padding:56px 24px 80px}
@@ -444,19 +450,59 @@
   <section class="slide" id="s-lt">
     <div class="eyebrow reveal">One more thing · 宣伝</div>
     <h1 class="reveal" style="--d:1">三田学園文化祭LT会<br><span class="g-b">「知らない世界の話をしよう」</span></h1>
-    <p class="lead reveal" style="--d:2;max-width:66ch">
-      いろんな分野の人が集まって、お互いの「知らない世界」を語り合うLT会。
-      <b style="color:var(--ink)">いろんな分野の人に来てもらうのがテーマ</b>です。<span class="sub">（……現在、若干技術寄り。だからこそ技術以外の人、来てほしい）</span>
+    <p class="lead reveal" style="--d:2;max-width:64ch">
+      分野を問わず、いろんな人に登壇してもらうのがテーマのLT会です。
+      正直に書くと今はまだ少し技術寄りで、だからこそ技術以外の「知らない世界」も聞きたいと思っています。
     </p>
-    <div class="grid g3" style="margin-top:32px">
-      <div class="card reveal" style="--d:3"><div class="ic tint-b"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5v6"/><path d="M6 12.5V17c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/></svg></div><h3>奈良先端科学技術大学院大学</h3><p>准教授の方がお話ししてくれる<b class="g-b">（かもしれない）</b></p></div>
-      <div class="card reveal" style="--d:4"><div class="ic tint-g"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div><h3>情報通信研究機構（NICT）</h3><p>横山さんがお話ししてくれる<b class="g-g">（かもしれない）</b></p></div>
-      <div class="card reveal" style="--d:5"><div class="ic tint-y"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z"/><path d="M9 21h6M10 24h4"/></svg></div><h3>次に話すのは、あなた</h3><p>あなたの「知らない世界」が聞ける<b style="color:#b06000">（かもしれない）</b></p></div>
+
+    <div class="split" style="margin-top:30px;grid-template-columns:1.15fr .85fr;align-items:stretch">
+      <div class="card reveal" style="--d:3;display:flex;flex-direction:column;justify-content:center">
+        <h3 style="margin-bottom:14px">登壇予定 <span class="sub" style="font-size:14px;font-weight:400">— いずれも現在調整中（＝お話ししてくれる<b class="g-b">かもしれない</b>）</span></h3>
+        <p style="font-size:16px;line-height:1.7;margin-bottom:10px">・<b style="color:var(--ink)">奈良先端科学技術大学院大学</b> の准教授</p>
+        <p style="font-size:16px;line-height:1.7">・<b style="color:var(--ink)">情報通信研究機構（NICT）</b> の横山さん</p>
+        <p class="maybe-note" style="margin-top:16px">何らかの予定が被らなければ多分来てくれます。</p>
+      </div>
+      <div class="card reveal" style="--d:4;display:flex;flex-direction:column;justify-content:center;border-left:5px solid var(--blue)">
+        <h3 style="margin-bottom:10px">スポンサー募集中（本気）</h3>
+        <p style="font-size:15.5px;line-height:1.7">
+          運営費は現在ほぼ主催者の自腹です。割と真面目にスポンサーが欲しいです。
+        </p>
+        <div class="qr-row">
+          <div class="qr"><img src="assets/qr-sglt.svg" alt="sglt.under18.dev の QR コード"></div>
+          <div class="qr-cap">詳細・お問い合わせ<br><a href="https://sglt.under18.dev" target="_blank" rel="noopener" style="color:var(--blue);font-weight:700;text-decoration:none">sglt.under18.dev</a></div>
+        </div>
+      </div>
     </div>
-    <p class="maybe-note reveal" style="--d:6">※「かもしれない」＝現在交渉中。当日までのお楽しみということで。</p>
-    <div class="punch reveal" style="--d:7;border-color:var(--blue)">
-      そして——運営費は現在ほぼ主催者の自腹です。<b class="g-b">スポンサー募集は「かもしれない」ではなく本気です。</b><br>
-      詳細・お問い合わせ → <a href="https://sglt.under18.dev" target="_blank" rel="noopener">sglt.under18.dev</a>
+  </section>
+
+  <!-- 12. YASUMI PROMO -->
+  <section class="slide" id="s-yasumi">
+    <div class="eyebrow reveal">もうひとつ作ってます · 宣伝</div>
+    <h1 class="reveal" style="--d:1"><span class="g-b">やすみ？</span><span class="sub" style="font-size:.4em;font-weight:400;letter-spacing:0;margin-left:.4em">— 今日、学校ある？を自動で。</span></h1>
+    <p class="lead reveal" style="--d:2;max-width:64ch">
+      気象庁の警報と、各学校の規則をもとに「今日は登校か休校か」を毎朝自動で判定して LINE で知らせる LINE ミニアプリです。
+      台風や大雪の朝、学校の判断を待たずに自分の予定が立てられます。
+    </p>
+
+    <div class="split" style="margin-top:28px;grid-template-columns:1.1fr .9fr;align-items:stretch">
+      <div class="card reveal" style="--d:3;display:flex;flex-direction:column;justify-content:center">
+        <h3 style="margin-bottom:12px">判定は5パターン</h3>
+        <p style="font-size:15.5px;line-height:1.8">
+          通常登校 / 自宅待機 / 午前休 / 午後から登校 / 全日休校。<br>
+          登録した地域・警報・判定時刻にあわせて、決まった時刻に自動で判定します。
+        </p>
+        <p class="maybe-note" style="margin-top:14px">同じ学校のみんなで規則を共有して使えます（学校公式のサービスではありません）。</p>
+      </div>
+      <div class="card reveal" style="--d:4;display:flex;flex-direction:column;justify-content:center;border-left:5px solid var(--green)">
+        <h3 style="margin-bottom:10px">3ステップで、いま無料</h3>
+        <p style="font-size:15.5px;line-height:1.7">
+          対象地域・警報・判定時刻を登録するだけ。LINE ミニアプリなのでアプリのインストールは不要です。
+        </p>
+        <div class="qr-row">
+          <div class="qr"><img src="assets/qr-yasumi.svg" alt="yasumi.unischool.jp の QR コード"></div>
+          <div class="qr-cap">スマホで読み取って<br><a href="https://yasumi.unischool.jp" target="_blank" rel="noopener" style="color:var(--green);font-weight:700;text-decoration:none">yasumi.unischool.jp</a></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -468,7 +514,7 @@
   <button id="prev" aria-label="前へ">‹</button>
   <button id="next" aria-label="次へ">›</button>
 </div>
-<div class="counter"><span id="cur">1</span> / <span id="total">11</span></div>
+<div class="counter"><span id="cur">1</span> / <span id="total">12</span></div>
 
 <script>
 (function(){
