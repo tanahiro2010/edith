@@ -217,12 +217,33 @@
   .brand-mini{position:fixed;top:20px;left:28px;z-index:50;font-weight:700;font-size:14px;letter-spacing:1px;}
   .hint{position:fixed;bottom:22px;right:28px;z-index:40;}
 
+  /* ---------- Sponsor CTA (top-right) ---------- */
+  .sponsor-cta{
+    position:fixed;top:14px;right:28px;z-index:52;
+    display:inline-flex;align-items:center;gap:9px;
+    font-size:13px;font-weight:700;letter-spacing:.5px;color:#fff;text-decoration:none;
+    background:linear-gradient(90deg,var(--blue),var(--green));
+    padding:9px 18px;border-radius:999px;box-shadow:var(--shadow);
+    transition:transform .25s var(--ease),box-shadow .25s var(--ease);
+  }
+  .sponsor-cta:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+  .sponsor-cta .pulse{width:8px;height:8px;border-radius:50%;background:#fff;animation:ctapulse 1.6s ease infinite;}
+  .sponsor-cta small{font-weight:500;opacity:.85;font-size:11px;}
+  @keyframes ctapulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+
+  /* ---------- LT promo slide ---------- */
+  .maybe-note{font-size:13px;color:var(--sub);margin-top:14px;}
+  #s-lt .punch a{color:var(--blue);font-weight:700;text-decoration:none;}
+  #s-lt .punch a:hover{text-decoration:underline;}
+
   @media (max-width:760px){
     .slide{padding:56px 24px 80px}
     .g3,.g4{grid-template-columns:1fr 1fr}
     .split{grid-template-columns:1fr;gap:20px}
     .srow{grid-template-columns:120px 1fr 70px}
     .plist{max-width:100%}
+    .sponsor-cta{top:10px;right:12px;font-size:11px;padding:7px 13px}
+    .sponsor-cta small{display:none}
   }
 </style>
 </head>
@@ -230,6 +251,9 @@
 
 <div class="topbar"><i id="progress"></i></div>
 <div class="brand-mini"><span class="g-b">E</span><span class="g-r">.D</span><span class="g-y">.I</span><span class="g-g">.T</span><span class="g-b">.H</span></div>
+<a class="sponsor-cta" href="https://sglt.under18.dev" target="_blank" rel="noopener">
+  <span class="pulse"></span>文化祭LT会 スポンサー募集中！<small>sglt.under18.dev</small>
+</a>
 
 <div class="deck" id="deck">
 
@@ -416,6 +440,26 @@
     <p class="sub reveal" style="--d:5;margin-top:28px;font-size:14px">聞いてくれてありがとうございました</p>
   </section>
 
+  <!-- 11. LT PROMO -->
+  <section class="slide" id="s-lt">
+    <div class="eyebrow reveal">One more thing · 宣伝</div>
+    <h1 class="reveal" style="--d:1">三田学園文化祭LT会<br><span class="g-b">「知らない世界の話をしよう」</span></h1>
+    <p class="lead reveal" style="--d:2;max-width:66ch">
+      いろんな分野の人が集まって、お互いの「知らない世界」を語り合うLT会。
+      <b style="color:var(--ink)">いろんな分野の人に来てもらうのがテーマ</b>です。<span class="sub">（……現在、若干技術寄り。だからこそ技術以外の人、来てほしい）</span>
+    </p>
+    <div class="grid g3" style="margin-top:32px">
+      <div class="card reveal" style="--d:3"><div class="ic tint-b"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5v6"/><path d="M6 12.5V17c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/></svg></div><h3>奈良先端科学技術大学院大学</h3><p>准教授の方がお話ししてくれる<b class="g-b">（かもしれない）</b></p></div>
+      <div class="card reveal" style="--d:4"><div class="ic tint-g"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div><h3>情報通信研究機構（NICT）</h3><p>横山さんがお話ししてくれる<b class="g-g">（かもしれない）</b></p></div>
+      <div class="card reveal" style="--d:5"><div class="ic tint-y"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z"/><path d="M9 21h6M10 24h4"/></svg></div><h3>次に話すのは、あなた</h3><p>あなたの「知らない世界」が聞ける<b style="color:#b06000">（かもしれない）</b></p></div>
+    </div>
+    <p class="maybe-note reveal" style="--d:6">※「かもしれない」＝現在交渉中。当日までのお楽しみということで。</p>
+    <div class="punch reveal" style="--d:7;border-color:var(--blue)">
+      そして——運営費は現在ほぼ主催者の自腹です。<b class="g-b">スポンサー募集は「かもしれない」ではなく本気です。</b><br>
+      詳細・お問い合わせ → <a href="https://sglt.under18.dev" target="_blank" rel="noopener">sglt.under18.dev</a>
+    </div>
+  </section>
+
 </div>
 
 <!-- Chrome -->
@@ -424,7 +468,7 @@
   <button id="prev" aria-label="前へ">‹</button>
   <button id="next" aria-label="次へ">›</button>
 </div>
-<div class="counter"><span id="cur">1</span> / <span id="total">10</span></div>
+<div class="counter"><span id="cur">1</span> / <span id="total">11</span></div>
 
 <script>
 (function(){
