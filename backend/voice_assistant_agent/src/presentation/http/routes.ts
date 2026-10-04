@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 
 import { runAgent } from "../../agent/agent.js";
 import { config } from "../../config.js";
@@ -9,10 +10,62 @@ import { stt } from "../../infrastructure/stt/http-whisper-provider.js";
 
 export const api = new Hono();
 
+// Web クライアント(Flutter web / ブラウザ)から別オリジンで叩けるよう CORS を許可。
+api.use("*", cors());
+
 // MVP: 認証は未実装（PRD §22 は将来対応）。全リクエストを既定ユーザーに紐付ける。
 const userId = () => config.defaultUserId;
 
 api.get("/health", (c) => c.json({ ok: true, service: "edith-voice-agent" }));
+
+// --- Vision（Face API へのプロキシ） ---
+// クライアントを単一オリジン(=Agent)に集約するため、顔の識別/登録は Agent 経由で
+// Face API に中継する（ブラウザCORS回避 + face_api を疎結合のまま維持）。
+api.post("/v1/vision/identify", async (c) => {
+  const body = await c.req.parseBody();
+  const image = body.image;
+  if (!(image instanceof File)) return c.json({ error: "image(file) is required" }, 400);
+  const form = new FormData();
+  form.append("image", image, image.name || "frame.jpg");
+  // 角度サンプルの自動学習(auto_enroll)とサンプルの出所(source)を透過的に中継。
+  if (typeof body.auto_enroll === "string") form.append("auto_enroll", body.auto_enroll);
+  if (typeof body.source === "string") form.append("source", body.source);
+  const res = await fetch(`${config.faceApiBaseUrl}/faces/identify`, { method: "POST", body: form });
+  return new Response(await res.text(), {
+    status: res.status,
+    headers: { "content-type": "application/json" },
+  });
+});
+
+// ライブ追跡用の高速な顔検出（枠のみ）。数Hzでポーリングされる。
+api.post("/v1/vision/detect", async (c) => {
+  const body = await c.req.parseBody();
+  const image = body.image;
+  if (!(image instanceof File)) return c.json({ error: "image(file) is required" }, 400);
+  const form = new FormData();
+  form.append("image", image, image.name || "frame.jpg");
+  const res = await fetch(`${config.faceApiBaseUrl}/faces/detect`, { method: "POST", body: form });
+  return new Response(await res.text(), {
+    status: res.status,
+    headers: { "content-type": "application/json" },
+  });
+});
+
+api.post("/v1/vision/register", async (c) => {
+  const body = await c.req.parseBody();
+  const image = body.image;
+  const name = typeof body.name === "string" ? body.name : "";
+  if (!(image instanceof File)) return c.json({ error: "image(file) is required" }, 400);
+  if (!name) return c.json({ error: "name is required" }, 400);
+  const form = new FormData();
+  form.append("name", name);
+  form.append("image", image, image.name || "frame.jpg");
+  const res = await fetch(`${config.faceApiBaseUrl}/faces/register`, { method: "POST", body: form });
+  return new Response(await res.text(), {
+    status: res.status,
+    headers: { "content-type": "application/json" },
+  });
+});
 
 // --- Agent ---
 

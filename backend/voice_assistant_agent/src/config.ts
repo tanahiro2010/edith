@@ -22,7 +22,7 @@ export const config = {
     apiKey: required("LLM_API_KEY"),
     model: process.env.LLM_MODEL ?? "openai/gpt-5.2",
   },
-  faceApiBaseUrl: process.env.FACE_API_BASE_URL ?? "http://localhost:8000",
+  faceApiBaseUrl: process.env.FACE_API_BASE_URL ?? "https://face.unischool.jp",
   // ローカル STT サービス（faster-whisper, backend/stt_service）。
   sttBaseUrl: process.env.STT_BASE_URL ?? "http://localhost:8020",
   // MVP: 認証未実装。全リクエストをこの固定ユーザーに紐付ける（PRD §22 は将来対応）。

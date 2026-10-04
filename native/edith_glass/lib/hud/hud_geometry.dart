@@ -1,28 +1,19 @@
-/// レティクルの幾何を **論理256×256（Halo の円形ディスプレイと同じ）** で定義する。
+/// HUD の幾何を **論理256×256（Halo の円形ディスプレイと同じ）** で定義する。
 /// Flutter の [ReticlePainter] と Halo 実機用の [haloReticleLua] が
 /// この同一定数を使うことで、プレビューと実機の見た目を一致させる。
+///
+/// レティクルは「ドットサイト」= 中央を小さく示すだけのミニマル表示。
 class HudGeometry {
   static const double size = 256; // Halo display: 256x256 circular
   static const double cx = 128;
   static const double cy = 128;
 
-  // 円形ディスプレイの縁
-  static const double edgeRadius = 126;
+  // ドットサイト：細いリング＋中心ドット
+  static const double dotRing = 9; // 中心リングの半径
+  static const double dotCore = 2.4; // 中心ドットの半径
 
-  // 外周の目盛りリング
-  static const double ringRadius = 96;
-  static const double ringTickInner = 88;
-  static const int ringTicks = 12;
-
-  // 中央を囲むコーナーブラケット
-  static const double bracket = 40; // 中心からブラケット角までの距離
-  static const double bracketArm = 16; // 腕の長さ
-
-  // 中央クロスヘア
-  static const double crossGap = 10;
-  static const double crossTick = 22;
-
-  // 中央の照準リング・ドット
-  static const double aimRing = 6;
-  static const double aimDot = 1.6;
+  // テキスト位置（上部ステータス／下部の名前タグ・補足）
+  static const double statusY = 24;
+  static const double nameY = 196;
+  static const double subY = 216;
 }

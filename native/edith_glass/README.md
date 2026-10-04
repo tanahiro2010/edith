@@ -16,13 +16,20 @@ brilliant.xyz **Halo** スマートグラス用のホストクライアント（
   コーナーブラケット・中央クロスヘア・照準リングを描画。認識時は緑＋ロックアーク演出。
   - Flutter 描画: `lib/hud/reticle_painter.dart`
   - 実機 Halo 用の同一幾何 Lua: `lib/hud/halo_reticle_lua.dart`（`frame.display.*`）
-- **識別**: 「カメラの顔を識別」→ Face API `/faces/identify` → HUD に名前タグ＋一致度。
+- **カメラ**: 実カメラ対応（`camera` パッケージ）。**iPhone / Web(Chrome の getUserMedia)** でライブ映像を
+  HUD 背景に表示し、撮影フレームを識別・登録に使う。カメラ非対応環境（macOSデスクトップ等）は
+  同梱画像 `assets/sample_face.jpg` に自動フォールバック（`lib/camera/frame_source.dart`）。
+- **顔追従トラッキング**: ライブ時、`/v1/vision/detect`（Face API `/faces/detect` 中継）を ~700ms でポーリングし、
+  検出した顔にコーナーブラケット枠を **lerp 補間で滑らかに追従**表示（`FaceBoxPainter`）。前面カメラの
+  左右反転に合わせる **ミラートグル**付き（枠が顔とズレたら切替）。レティクルは中央のドットサイトのみ。
+- **識別**: 自動（顔検出中に定期）／手動「今すぐ識別」→ HUD に名前タグ＋一致度。
 - **指示**: テキストを Voice Agent `/v1/agent/input` へ。`capture_face` アクションが来たら
-  カメラ撮影→ `/faces/register` 登録を実行し、結果を Agent に返す。
+  カメラ撮影→登録を実行し、結果を Agent に返す。
 - **音声**: `VoiceAgentApi.sendAudio()` で `/v1/agent/audio`（サーバ側ローカルSTT）に対応。
 
-> MVP では「グラスのカメラフレーム」を同梱画像 `assets/sample_face.jpg` で代替している。
-> 実機では `RxPhoto`（JPEG）フレームに差し替える。
+> 顔の識別/登録は **Voice Agent の vision プロキシ(`/v1/vision/identify` · `/v1/vision/register`)経由**で
+> Face API に中継する（ブラウザCORS回避＋単一オリジン）。実機では `RxPhoto`（JPEG）フレームを
+> `FrameSource` に差し込む。
 
 ## アーキテクチャ（デバイス非依存）
 
@@ -43,14 +50,23 @@ Mac/Web → スマホ → Halo へクライアントを移せる。
 ```bash
 flutter pub get
 
-# ブラウザで（要 Chrome）。バックエンド(:8000/:8010)を起動しておくと識別・指示も動く
+# 実カメラで試すなら Chrome 推奨（Webカメラ＋コード署名不要）。要 Voice Agent(:8010) 起動。
 flutter run -d chrome
-# または macOS デスクトップアプリ
+
+# iPhone（実機カメラ）: iOS を生成して署名してから
+flutter create --platforms=ios .   # 初回のみ。ios/Runner/Info.plist に NSCameraUsageDescription を追加
+flutter run -d <iPhone>            # api_config.dart の localhost を Mac の LAN IP に変更
+
+# macOS デスクトップ（カメラは非対応→サンプル画像に fallback）
 flutter run -d macos
 ```
 
-> Flutter web からバックエンドを叩く場合、Face API / Voice Agent 側の CORS 設定が必要な
-> ことがある（ブラウザ制限）。デスクトップ/モバイルアプリでは不要。
+**メモ**
+- Web からバックエンドを叩くための CORS は Voice Agent 側で許可済み。顔の識別/登録も
+  Agent の vision プロキシ経由なので、クライアントは Agent(:8010) 単一オリジンでよい。
+- **macOS ビルドで `CodeSign failed ... resource fork ... not allowed` が出る場合**:
+  ダウンロード等で付いた拡張属性 `com.apple.provenance` が原因。`xattr -cr .` 後に
+  `flutter clean && flutter run -d macos`。消えない環境では `-d chrome` を使うのが確実。
 
 ## 開発ツール（実機なしでの検証）
 

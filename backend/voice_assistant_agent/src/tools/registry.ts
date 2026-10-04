@@ -1,5 +1,6 @@
 import type OpenAI from "openai";
 
+import { assignFaceTool } from "./person/assign-face.js";
 import { getPersonTool } from "./person/get-person.js";
 import { registerPersonTool } from "./person/register-person.js";
 import { searchConversationsTool } from "./conversation/search-conversations.js";
@@ -10,6 +11,7 @@ import type { AgentTool } from "./types.js";
 // PRD §7: MVP で実装する Tool 一式。
 export const tools: AgentTool[] = [
   registerPersonTool,
+  assignFaceTool,
   getPersonTool,
   startConversationTool,
   stopConversationTool,

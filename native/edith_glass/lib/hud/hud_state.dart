@@ -40,4 +40,15 @@ class HudState {
   }
 
   static const idle = HudState();
+
+  @override
+  bool operator ==(Object other) =>
+      other is HudState &&
+      other.status == status &&
+      other.name == name &&
+      other.subInfo == subInfo &&
+      other.locked == locked;
+
+  @override
+  int get hashCode => Object.hash(status, name, subInfo, locked);
 }

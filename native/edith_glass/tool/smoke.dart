@@ -8,7 +8,8 @@ import 'package:edith_glass/services/face_api.dart';
 import 'package:edith_glass/services/voice_agent_api.dart';
 
 Future<void> main() async {
-  final face = FaceApi('http://localhost:8000');
+  // 顔識別も Agent の vision プロキシ(/v1/vision/*)経由なので Agent の URL を渡す。
+  final face = FaceApi('http://localhost:8010');
   final agent = VoiceAgentApi('http://localhost:8010');
 
   final bytes = await File('assets/sample_face.jpg').readAsBytes();

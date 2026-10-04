@@ -11,6 +11,12 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   http: ^1.2.2
+  # 実カメラ（iOS / Web=getUserMedia / Android）。macOSデスクトップは非対応→アセットに fallback。
+  camera: ^0.11.0
+  # Web の DOM/プラットフォームビュー登録（MediaPipe クライアント検出用）
+  web: ^1.1.0
+  # 多人数識別のため、フレームから顔領域を切り出す（純Dart・全プラットフォーム）
+  image: ^4.3.0
 
 dev_dependencies:
   flutter_test:

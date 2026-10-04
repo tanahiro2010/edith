@@ -85,5 +85,6 @@ STT_MODEL=small ./.venv/bin/uvicorn app:app --port 8020   # 初回は whisper �
 
 ## ドキュメント
 
+- [`docs/architecture.md`](./docs/architecture.md) — **アーキテクチャ解説（プレゼン資料用・Mermaid図付き）**
 - [`smart_glasses_social_memory.md`](./smart_glasses_social_memory.md) — プロダクト全体の PRD（Goals / User Stories / Risks）
 - [`backend/voice_assistant_agent/PRD.md`](./backend/voice_assistant_agent/PRD.md) — Voice Agent の詳細 PRD（API / データモデル / フェーズ計画）

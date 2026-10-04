@@ -4,11 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('haloReticleLua', () {
-    test('画面クリアと基本プリミティブを含む', () {
+    test('画面クリアとドットサイト（リング＋ドット）を含む', () {
       final lua = haloReticleLua(const HudState(status: 'SCANNING'));
       expect(lua, contains('frame.display.clear(0x000000)'));
-      expect(lua, contains('frame.display.circle(128,128')); // 照準リング等
-      expect(lua, contains('frame.display.line(')); // クロスヘア/ブラケット
+      // 中心リング(false)と中心ドット(true)の2つの circle
+      expect(lua, contains('frame.display.circle(128,128,9,0x00E5FF,false)'));
+      expect(lua, contains('frame.display.circle(128,128,2,0x00E5FF,true)'));
       expect(lua, contains('SCANNING'));
       // 未認識時は名前タグを描かない
       expect(lua, isNot(contains('188,'))); // 名前の y=188 行が無い
