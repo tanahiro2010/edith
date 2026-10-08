@@ -17,6 +17,10 @@ dependencies:
   web: ^1.1.0
   # 多人数識別のため、フレームから顔領域を切り出す（純Dart・全プラットフォーム）
   image: ^4.3.0
+  # 端末マイクのオンデバイス音声認識（iOS ネイティブ STT）→ テキスト指示へ
+  speech_to_text: ^7.0.0
+  # バックエンド接続先（ホストIP等）を端末に保存
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
