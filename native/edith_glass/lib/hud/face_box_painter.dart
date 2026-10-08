@@ -10,11 +10,17 @@ class FaceBoxPainter extends CustomPainter {
     required this.faces,
     required this.aspect,
     required this.mirror,
+    this.coverIntoSquare = true,
   });
 
   final List<FaceBox> faces;
   final double aspect; // 画像の 幅/高
   final bool mirror;
+
+  /// true: 正方形ウィジェットへ [aspect] の BoxFit.cover で写す（円形 GlassView・golden用）。
+  /// false: ウィジェット全体をそのまま画像座標空間として直接マップする
+  /// （カメラ映像と同一の FittedBox(cover) の内側に重ねるフルスクリーンAR用）。
+  final bool coverIntoSquare;
 
   static const Color cyan = Color(0xFF00E5FF); // 未識別
   static const Color green = Color(0xFF7CFF6B); // 識別済み
@@ -22,18 +28,30 @@ class FaceBoxPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (faces.isEmpty) return;
-    final side = size.shortestSide;
 
-    double dispW, dispH;
-    if (aspect >= 1) {
-      dispH = side;
-      dispW = side * aspect;
+    double dispW, dispH, offX, offY;
+    // mirror とラベルのクランプに使う基準幅。
+    final double refW;
+    if (coverIntoSquare) {
+      final side = size.shortestSide;
+      if (aspect >= 1) {
+        dispH = side;
+        dispW = side * aspect;
+      } else {
+        dispW = side;
+        dispH = side / aspect;
+      }
+      offX = (side - dispW) / 2;
+      offY = (side - dispH) / 2;
+      refW = side;
     } else {
-      dispW = side;
-      dispH = side / aspect;
+      // ウィジェット全体が画像座標（親の FittedBox が cover 変換を担う）。
+      dispW = size.width;
+      dispH = size.height;
+      offX = 0;
+      offY = 0;
+      refW = size.width;
     }
-    final offX = (side - dispW) / 2;
-    final offY = (side - dispH) / 2;
 
     for (final f in faces) {
       final named = f.name != null && f.name!.isNotEmpty;
@@ -44,7 +62,7 @@ class FaceBoxPainter extends CustomPainter {
       final py = offY + f.y * dispH;
       final pw = f.w * dispW;
       final ph = f.h * dispH;
-      if (mirror) px = side - (px + pw);
+      if (mirror) px = refW - (px + pw);
       final rect = Rect.fromLTWH(px, py, pw, ph);
 
       canvas.drawRect(
@@ -63,7 +81,7 @@ class FaceBoxPainter extends CustomPainter {
           ..strokeCap = StrokeCap.round
           ..color = color,
       );
-      if (label.isNotEmpty) _label(canvas, rect, label, color, side);
+      if (label.isNotEmpty) _label(canvas, rect, label, color, refW);
     }
   }
 
@@ -105,5 +123,8 @@ class FaceBoxPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant FaceBoxPainter old) =>
-      old.faces != faces || old.aspect != aspect || old.mirror != mirror;
+      old.faces != faces ||
+      old.aspect != aspect ||
+      old.mirror != mirror ||
+      old.coverIntoSquare != coverIntoSquare;
 }

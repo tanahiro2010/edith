@@ -5,16 +5,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:image/image.dart' as img;
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../camera/frame_source.dart';
 import '../glass/glass_transport.dart';
+import '../hud/ar_view.dart';
 import '../hud/face_box.dart';
-import '../hud/glass_view.dart';
 import '../hud/hud_state.dart';
 import '../services/api_config.dart';
 import '../services/face_api.dart';
 import '../services/voice_agent_api.dart';
 import '../vision/client_face_detector.dart';
+import 'settings_sheet.dart';
 
 /// 追跡中の1つの顔（トラック）。同一トラックである限り人物を固定（sticky）し、
 /// 見失うまで「不明」に落とさない。複数の顔はそれぞれ別トラック＝別人として扱う。
@@ -46,10 +48,17 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
-  late final VoiceAgentApi _agent = VoiceAgentApi(widget.config.agentBaseUrl);
-  late final FaceApi _face = FaceApi(widget.config.agentBaseUrl);
+  late ApiConfig _config = widget.config;
+  // Face API も Agent 側 `/v1/vision/*` 経由のため agentBaseUrl を使う（既存仕様）。
+  late VoiceAgentApi _agent = VoiceAgentApi(_config.agentBaseUrl);
+  late FaceApi _face = FaceApi(_config.agentBaseUrl);
   final _input = TextEditingController();
   final List<String> _log = [];
+
+  // オンデバイス音声認識（iOS ネイティブ STT）。結果テキストを既存 _send に流す。
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechAvail = false;
+  bool _listening = false;
 
   static const _sampleAsset = 'assets/sample_face.jpg';
   static const _tickInterval = Duration(milliseconds: 700); // サーバ検出モードのポーリング
@@ -89,6 +98,60 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.initState();
     _ticker = createTicker(_onTick)..start();
     _initVision();
+    _initSpeech();
+  }
+
+  /// 端末の音声認識を初期化。使えない環境（シミュレータ等）では静かに無効化する。
+  Future<void> _initSpeech() async {
+    try {
+      final ok = await _speech.initialize(
+        onStatus: (s) {
+          if (!mounted) return;
+          if (s == 'done' || s == 'notListening') setState(() => _listening = false);
+        },
+        onError: (_) {
+          if (mounted) setState(() => _listening = false);
+        },
+      );
+      if (mounted) setState(() => _speechAvail = ok);
+    } catch (_) {
+      if (mounted) setState(() => _speechAvail = false);
+    }
+  }
+
+  /// マイクのオン/オフ。最終結果が出たら入力欄へ入れて既存の送信パイプラインに流す。
+  Future<void> _toggleMic() async {
+    if (!_speechAvail) {
+      _addLog('⚠️ 音声認識が使えません（権限/対応状況を確認）');
+      return;
+    }
+    if (_listening) {
+      await _speech.stop();
+      if (mounted) setState(() => _listening = false);
+      return;
+    }
+    setState(() => _listening = true);
+    await _speech.listen(
+      listenOptions: stt.SpeechListenOptions(localeId: 'ja_JP', partialResults: false),
+      onResult: (r) {
+        if (r.finalResult && r.recognizedWords.trim().isNotEmpty) {
+          _input.text = r.recognizedWords.trim();
+          _send();
+        }
+      },
+    );
+  }
+
+  /// 接続先設定シートを開き、保存されたら API クライアントを作り直す。
+  Future<void> _openSettings() async {
+    final next = await showSettingsSheet(context, _config);
+    if (next == null || !mounted) return;
+    setState(() {
+      _config = next;
+      _agent = VoiceAgentApi(_config.agentBaseUrl);
+      _face = FaceApi(_config.agentBaseUrl);
+    });
+    _addLog('🔧 接続先を更新: ${_config.agentBaseUrl}');
   }
 
   Future<void> _initVision() async {
@@ -517,6 +580,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   @override
   void dispose() {
+    _speech.cancel();
     _stopAuto();
     _ticker?.dispose();
     _tracksVN.dispose();
@@ -529,122 +593,201 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
+    final live = _clientMode
+        ? _client!.preview()
+        : (_frame?.isLive == true ? _frame!.livePreview() : null);
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F12),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0B0F12),
-        foregroundColor: const Color(0xFF00E5FF),
-        title: const Text('E.D.I.T.H · Halo Glass Client'),
-      ),
-      body: LayoutBuilder(builder: (context, c) {
-        final wide = c.maxWidth > 720;
-        final live = _clientMode
-            ? _client!.preview()
-            : (_frame?.isLive == true ? _frame!.livePreview() : null);
-        final glass = Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420, maxHeight: 420),
-              child: ValueListenableBuilder<HudState>(
-                valueListenable: widget.transport.hud,
-                builder: (_, state, __) => GlassView(
-                  state: state,
-                  background: _background,
-                  liveBackground: live,
-                  previewAspect: _previewAspect,
-                  mirror: _mirror,
-                  faces: _tracksVN,
-                ),
-              ),
+      backgroundColor: const Color(0xFF06080A),
+      resizeToAvoidBottomInset: true,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // フルスクリーンAR（カメラ映像＋追従枠＋中央レティクル）
+          ValueListenableBuilder<HudState>(
+            valueListenable: widget.transport.hud,
+            builder: (_, state, __) => ArView(
+              state: state,
+              background: _background,
+              liveBackground: live,
+              previewAspect: _previewAspect,
+              mirror: _mirror,
+              faces: _tracksVN,
             ),
           ),
-        );
-        final panel = _buildPanel();
-        return wide
-            ? Row(children: [Expanded(child: glass), SizedBox(width: 340, child: panel)])
-            : ListView(children: [SizedBox(height: 360, child: glass), panel]);
-      }),
+          // 上部バー（ブランド＋設定）
+          SafeArea(child: _buildTopBar()),
+          // 下部バー（ログ＋入力＋マイク）
+          SafeArea(
+            child: Align(alignment: Alignment.bottomCenter, child: _buildBottomBar()),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildPanel() {
+  Widget _buildTopBar() {
     const cyan = Color(0xFF00E5FF);
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
         children: [
-          if (_clientMode && _cameras.length > 1) _buildCameraPicker(cyan),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            title: const Text('自動追跡・識別（顔ごとに枠＋名前）',
-                style: TextStyle(color: Colors.white70, fontSize: 14)),
-            value: _auto,
-            activeThumbColor: cyan,
-            onChanged: (v) {
-              setState(() => _auto = v);
-              if (v && (_clientMode || _frame?.isLive == true)) {
-                _startAuto();
-              } else {
-                _stopAuto();
-              }
-            },
+          const Text('E.D.I.T.H',
+              style: TextStyle(color: cyan, fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 3)),
+          const Spacer(),
+          IconButton(
+            tooltip: '設定',
+            icon: const Icon(Icons.tune, color: Colors.white70),
+            onPressed: _showControls,
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            title: const Text('角度サンプルを自動学習',
-                style: TextStyle(color: Colors.white70, fontSize: 14)),
-            value: _autoLearn,
-            activeThumbColor: cyan,
-            onChanged: (v) => setState(() => _autoLearn = v),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            title: const Text('ミラー（枠が顔とズレたら切替）',
-                style: TextStyle(color: Colors.white70, fontSize: 14)),
-            value: _mirror,
-            activeThumbColor: cyan,
-            onChanged: (v) => setState(() => _mirror = v),
-          ),
-          FilledButton.icon(
-            onPressed: _busy ? null : _identify,
-            icon: const Icon(Icons.center_focus_strong),
-            label: const Text('今すぐ識別'),
-          ),
-          const SizedBox(height: 8),
-          Row(children: [
-            Expanded(
-              child: TextField(
-                controller: _input,
-                onSubmitted: (_) => _send(),
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: '指示（例: 田中さんを覚えて）',
-                  hintStyle: TextStyle(color: Colors.white38),
-                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: cyan)),
-                ),
-              ),
-            ),
-            IconButton(onPressed: _busy ? null : _send, icon: const Icon(Icons.send, color: cyan)),
-          ]),
-          const SizedBox(height: 12),
-          const Text('LOG', style: TextStyle(color: cyan, fontSize: 12, letterSpacing: 2)),
-          const Divider(color: Colors.white12),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _log.length,
-              itemBuilder: (_, i) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Text(_log[i], style: const TextStyle(color: Colors.white70, fontSize: 13)),
-              ),
-            ),
+          IconButton(
+            tooltip: '接続先',
+            icon: const Icon(Icons.settings_outlined, color: Colors.white70),
+            onPressed: _openSettings,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    const cyan = Color(0xFF00E5FF);
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xCC0B0F12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_log.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
+              child: Text(
+                _log.take(3).join('\n'),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.3),
+              ),
+            ),
+          Row(
+            children: [
+              IconButton(
+                tooltip: '今すぐ識別',
+                onPressed: _busy ? null : _identify,
+                icon: const Icon(Icons.center_focus_strong, color: cyan),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _input,
+                  onSubmitted: (_) => _send(),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: '指示（例: 田中さんを覚えて）',
+                    hintStyle: TextStyle(color: Colors.white38),
+                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                    focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: cyan)),
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: '音声入力',
+                onPressed: _speechAvail && !_busy ? _toggleMic : null,
+                icon: Icon(
+                  _listening ? Icons.mic : Icons.mic_none,
+                  color: _listening ? const Color(0xFF7CFF6B) : (_speechAvail ? cyan : Colors.white24),
+                ),
+              ),
+              IconButton(
+                onPressed: _busy ? null : _send,
+                icon: const Icon(Icons.send, color: cyan),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 追跡・学習・ミラー等のトグルとカメラ選択・ログをまとめたシート。
+  void _showControls() {
+    const cyan = Color(0xFF00E5FF);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF14202A),
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          void mutate(VoidCallback fn) {
+            setState(fn);
+            setSheet(() {});
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_clientMode && _cameras.length > 1) _buildCameraPicker(cyan),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('自動追跡・識別（顔ごとに枠＋名前）',
+                        style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    value: _auto,
+                    activeThumbColor: cyan,
+                    onChanged: (v) {
+                      mutate(() => _auto = v);
+                      if (v && (_clientMode || _frame?.isLive == true)) {
+                        _startAuto();
+                      } else {
+                        _stopAuto();
+                      }
+                    },
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('角度サンプルを自動学習',
+                        style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    value: _autoLearn,
+                    activeThumbColor: cyan,
+                    onChanged: (v) => mutate(() => _autoLearn = v),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('ミラー（枠が顔とズレたら切替）',
+                        style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    value: _mirror,
+                    activeThumbColor: cyan,
+                    onChanged: (v) => mutate(() => _mirror = v),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('LOG', style: TextStyle(color: cyan, fontSize: 12, letterSpacing: 2)),
+                  const Divider(color: Colors.white12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 180),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _log.length,
+                      itemBuilder: (_, i) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Text(_log[i], style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
