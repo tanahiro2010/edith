@@ -15,13 +15,13 @@ class IdentifyResult {
   final bool sampleAdded;
 }
 
-/// 顔の識別・登録クライアント。ブラウザCORS回避と疎結合のため、Face API を直接ではなく
-/// **Voice Agent の vision プロキシ(`/v1/vision/*`)経由**で呼ぶ（baseUrl は Agent の URL）。
+/// 顔の識別・登録クライアント。Face API(FastAPI, `/faces/*`) を直接呼ぶ
+/// （baseUrl は Face API の URL。例: https://face.unischool.jp）。
 /// 顔検出・Embedding 生成は Face API 側の責務。
 class FaceApi {
   FaceApi(this.baseUrl, {http.Client? client}) : _client = client ?? http.Client();
 
-  /// Voice Agent のベースURL（例: http://localhost:8010）。
+  /// Face API のベースURL（例: https://face.unischool.jp）。
   final String baseUrl;
   final http.Client _client;
 
@@ -33,7 +33,7 @@ class FaceApi {
     bool autoEnroll = true,
     String source = 'edith-glass',
   }) async {
-    final req = http.MultipartRequest('POST', Uri.parse('$baseUrl/v1/vision/identify'))
+    final req = http.MultipartRequest('POST', Uri.parse('$baseUrl/faces/identify'))
       ..fields['auto_enroll'] = autoEnroll ? 'true' : 'false'
       ..fields['source'] = source
       ..files.add(http.MultipartFile.fromBytes('image', jpegBytes, filename: filename));
@@ -58,7 +58,7 @@ class FaceApi {
   /// 追跡ループを止めないため、エラー時は空結果を返す（例外を投げない）。
   Future<DetectResult> detect(List<int> jpegBytes, {String filename = 'frame.jpg'}) async {
     try {
-      final req = http.MultipartRequest('POST', Uri.parse('$baseUrl/v1/vision/detect'))
+      final req = http.MultipartRequest('POST', Uri.parse('$baseUrl/faces/detect'))
         ..files.add(http.MultipartFile.fromBytes('image', jpegBytes, filename: filename));
       final res = await http.Response.fromStream(await _client.send(req));
       if (res.statusCode >= 400) return DetectResult.empty;
@@ -74,7 +74,7 @@ class FaceApi {
 
   /// 画像と名前で人物を登録する（register_person の実処理）。
   Future<String> register(List<int> jpegBytes, String name, {String filename = 'frame.jpg'}) async {
-    final req = http.MultipartRequest('POST', Uri.parse('$baseUrl/v1/vision/register'))
+    final req = http.MultipartRequest('POST', Uri.parse('$baseUrl/faces/register'))
       ..fields['name'] = name
       ..files.add(http.MultipartFile.fromBytes('image', jpegBytes, filename: filename));
     final res = await http.Response.fromStream(await _client.send(req));

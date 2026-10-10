@@ -11,7 +11,7 @@ class ApiConfig {
   static const String _defaultAgent =
       String.fromEnvironment('EDITH_AGENT_URL', defaultValue: 'http://localhost:8010');
   static const String _defaultFace =
-      String.fromEnvironment('EDITH_FACE_URL', defaultValue: 'http://localhost:8000');
+      String.fromEnvironment('EDITH_FACE_URL', defaultValue: 'https://face.unischool.jp');
 
   /// Voice Agent (TypeScript/Hono)
   final String agentBaseUrl;

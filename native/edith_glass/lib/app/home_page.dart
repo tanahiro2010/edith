@@ -49,9 +49,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   late ApiConfig _config = widget.config;
-  // Face API も Agent 側 `/v1/vision/*` 経由のため agentBaseUrl を使う（既存仕様）。
+  // Face API は `/faces/*` を直接叩くため faceBaseUrl を使う（例: https://face.unischool.jp）。
   late VoiceAgentApi _agent = VoiceAgentApi(_config.agentBaseUrl);
-  late FaceApi _face = FaceApi(_config.agentBaseUrl);
+  late FaceApi _face = FaceApi(_config.faceBaseUrl);
   final _input = TextEditingController();
   final List<String> _log = [];
 
@@ -149,9 +149,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     setState(() {
       _config = next;
       _agent = VoiceAgentApi(_config.agentBaseUrl);
-      _face = FaceApi(_config.agentBaseUrl);
+      _face = FaceApi(_config.faceBaseUrl);
     });
-    _addLog('🔧 接続先を更新: ${_config.agentBaseUrl}');
+    _addLog('🔧 接続先を更新: agent=${_config.agentBaseUrl} face=${_config.faceBaseUrl}');
   }
 
   Future<void> _initVision() async {
