@@ -5,9 +5,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-edith_agent}
-    # face_api の PostgreSQL(5432) と衝突しないよう 5433 で公開する
-    ports:
-      - "5433:5432"
+    # 他サービスのPostgreSQL(5432/5433等)と衝突しないよう、ホストには公開せずコンテナ内のみで使う。
     volumes:
       - agent_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -15,6 +13,27 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  agent:
+    build: .
+    container_name: edith_agent
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-edith_agent}
+    ports:
+      - "8010:8010"
+    # 本番(unischool)ではホストにポートを公開せず、cloudflaredコンテナから内部ネットワーク経由で
+    # 到達する構成にしている（docker-compose.prod.yml参照）。ローカル/単体確認用はこのままでよい。
+    depends_on:
+      db:
+        condition: service_healthy
+    # face_api/stt_serviceは別docker-composeプロジェクト(別ネットワーク)なので、
+    # ホスト経由(host.docker.internal)で到達する。.envのFACE_API_BASE_URL/STT_BASE_URLを
+    # http://host.docker.internal:8000 / :8020 に設定すること。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
 
 volumes:
   agent_db_data:

@@ -1,0 +1,13 @@
+# 本番(unischool)用の上書き設定。`docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d` で使う。
+# agentはホストにポートを公開せず、同じ外部ネットワーク(edith_net)上のcloudflaredコンテナから
+# コンテナ名(edith_agent)で到達させる。dbへの到達用に元々のdefaultネットワークも維持する。
+services:
+  agent:
+    ports: !override []
+    networks:
+      - default
+      - edith_net
+
+networks:
+  edith_net:
+    external: true
