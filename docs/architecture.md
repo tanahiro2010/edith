@@ -1,8 +1,14 @@
 # E.D.I.T.H アーキテクチャ解説（プレゼン資料用）
 
-> スマートグラス(brilliant.xyz **Halo**)向け「社会的記憶」補助システム。
+> スマートグラス向け「社会的記憶」補助システム。
 > 一度会った人を **Recognize（誰か分かる）→ Remember（何を話したか思い出す）→ Assist（今の会話を助ける）**。
 > このドキュメントはプレゼン資料作成のベース。図は Mermaid でそのまま貼り付け・編集できます。
+>
+> **2026年11月更新**: 当初の対象デバイス brilliant.xyz **Halo** は詐欺商品で実機入手が不可能と判明。
+> 現在は **モバイルWeb（スマホ背面カメラ＝グラスのカメラ）を最優先**、将来的に **Rokidスマートグラス**
+> にも対応する方針。本ドキュメントの図はHalo前提で書かれた箇所が残っているため、クライアントに
+> 関する記述は [`../README.md`](../README.md) と [`../../edith_mobile/README.md`](../../edith_mobile/README.md)
+> を正とする。
 
 ---
 
@@ -20,9 +26,9 @@
 
 ```mermaid
 graph TD
-    subgraph Client["📱 クライアント（native/edith_glass, Flutter）"]
-        HUD["HUD レティクル描画<br/>(Preview / 実機Haloは Lua)"]
-        CAM["カメラ / マイク"]
+    subgraph Client["📱 クライアント（edith_mobile, Web）"]
+        HUD["HUD レティクル描画<br/>(canvas、背面カメラ映像に重畳)"]
+        CAM["カメラ(背面=グラス相当) / マイク"]
     end
 
     subgraph Backend["🧠 バックエンド（ローカル起動）"]
@@ -63,7 +69,7 @@ graph TD
 | **Voice Agent** | 指示理解・Tool Calling・会話ログ・記憶 | TypeScript / Hono / Drizzle / PostgreSQL | 8010 |
 | **STT Service** | 音声の文字起こし（ローカル） | Python / faster-whisper (CPU int8) | 8020 |
 | **Face API** | 顔の登録・識別（Embedding） | Python / FastAPI / insightface(buffalo_l, 512次元) / pgvector | 8000 |
-| **Native Client** | グラスHUD・カメラ・音声 | Flutter / (Halo: brilliant_sdk, Lua) | — |
+| **Mobile Client** | グラスHUD・カメラ・音声 | TypeScript / Vite（Web, MediaPipe tasks-vision） | — |
 | **LLM** | 意図理解・Tool選択・応答生成 | deniai `openai/gpt-5.2`（OpenAI互換, クラウド） | — |
 
 ---
@@ -182,22 +188,17 @@ sequenceDiagram
 
 ---
 
-## 6. HUD とデバイス非依存（Native の肝）
+## 6. HUD とデバイス非依存
 
-「グラス越しの映像」= 256×256 の円形ディスプレイ（Halo と同解像度）に **SFレティクル** を中央表示。
-同じ状態(`HudState`)から、**Flutter描画（実機なしのプレビュー）** と **Halo実機用のLua描画** を生成する。
+「グラス越しの映像」= スマホ背面カメラの映像に、同じ `HudState` から生成した **レティクル/名前タグ** を
+canvasで重畳表示する（`edith_mobile/src/hud/hudCanvas.ts`）。Halo向けに検討していた
+「Flutter描画(Preview) / Lua描画(実機Halo)」という二系統のTransport抽象は廃止し、
+**ブラウザのcanvas描画のみ**に一本化した。Rokidグラス対応時も、同じ`HudState`と描画ロジックを
+流用し、カメラ取得元（`cameraSource.ts`）だけを差し替える想定（[`../../edith_rokid/README.md`](../../edith_rokid/README.md)）。
 
-```mermaid
-graph LR
-    S["HudState<br/>(status / name / locked)"] --> T{"GlassTransport"}
-    T -->|"実機なし"| P["PreviewGlassTransport<br/>→ Flutter CustomPainter で描画"]
-    T -->|"実機Halo"| H["HaloGlassTransport<br/>→ haloReticleLua() を<br/>device.sendString で BLE 送信"]
-    P --> V1["開発PC / Mac / Chrome で確認"]
-    H --> V2["グラスの 256×256 円形HUDに描画"]
-```
-
-- レティクル幾何は `hud_geometry.dart` に一元化 → プレビューと実機の見た目が一致。
-- 実機到着前は **halo-ws-simulator**（公式）で `sendLua` を実機同様に検証でき、到着後は依存差し替えのみ。
+- HUD状態（status / name / subInfo / locked）は `edith_mobile/src/hud/hudState.ts` に一元化。
+- 顔検出・追跡（複数人のsticky識別）はクライアント内(`@mediapipe/tasks-vision`)で完結し、
+  サーバには識別（`/faces/identify`）のためだけに切り出した顔画像を送る。
 
 ---
 
@@ -207,14 +208,13 @@ graph LR
 - ✅ Face API：顔の登録・識別（近距離の大きな顔の検出不具合を修正済み）
 - ✅ Voice Agent：Text指示 + 音声入力(Push-to-Talk)、Tool Calling、会話ログ・要約・検索
 - ✅ STT：ローカル文字起こし（日本語）
-- ✅ Native：SFレティクルHUD、バックエンド実通信、Preview/実機トランスポート抽象
+- ✅ Mobile Client（`edith_mobile`）：背面カメラ実映像での顔検出・追跡・識別、canvas HUD、テキスト/音声指示、`https://edith.under18.dev/`へのDocker+cloudflaredデプロイ
 
 **今後（ロードマップ）**
-- クライアントの実カメラ連続識別（現在は同梱画像で代替）
 - HUD 表示レベル制御（Lv.2 前回の話題 / Lv.3 詳細・会話cue）
 - Phase 3：会話ログ自動化（VAD + 連続STT + 話者分離）
 - Phase 4：WebSocket リアルタイム化、TTS（音声応答）
-- Phase 5：Halo 実機統合（brilliant_sdk / BLE / RxPhoto・RxAudio）
+- Phase 5：Rokidスマートグラス対応（[`../../edith_rokid/README.md`](../../edith_rokid/README.md)の調査結果に基づき実機検証）
 
 ---
 
@@ -223,9 +223,9 @@ graph LR
 | 対象 | 方法 |
 | --- | --- |
 | バックエンド | `podman` で PostgreSQL(+pgvector) 起動 → 各サービス起動（README参照） |
-| Native(Mac) | `flutter run -d macos`（localhost 直結）または `-d chrome` |
-| Native(iPhone) | `flutter create --platforms=ios .` → Xcode署名 → `api_config.dart` を Mac の LAN IP に変更 → `flutter run -d <iPhone>` |
-| レティクル描画 | `flutter test --update-goldens` で実描画PNGを生成 |
+| Mobile Client | `cd edith_mobile && npm run dev` → スマホ実機のブラウザから同一LAN上でアクセス |
+| Mobile Client（本番相当） | `docker compose build && docker compose up` → cloudflared経由で `https://edith.under18.dev/` にアクセス |
+| 旧Native(Flutter, アーカイブ) | [`native/edith_glass/README.md`](../native/edith_glass/README.md) 参照（新規開発はしない） |
 | バックエンド結合 | `dart run tool/smoke.dart`（稼働中サービスへ実通信） |
 
 > 注: iPhone 実機で「ライブカメラ識別」「Halo HUD描画」を行うには、実カメラ配線 / Halo実機(BLE) が別途必要。

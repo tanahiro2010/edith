@@ -1,4 +1,10 @@
-# E.D.I.T.H Glass Client (Flutter / Halo)
+# E.D.I.T.H Glass Client (Flutter / Halo) — 🗄 アーカイブ
+
+> **このクライアントはアーカイブ済みです。** 対象デバイスの brilliant.xyz **Halo** は詐欺商品で
+> 実機入手が不可能であることが判明したため、新規開発はここでは行わない。
+> 現在のクライアントは [`../../../edith_mobile`](../../../edith_mobile)（モバイルWeb・最優先）と
+> [`../../../edith_rokid`](../../../edith_rokid)（Rokidグラス・設計メモ）を参照。
+> このFlutter実装は顔トラッキング・HUD描画等のロジック移植元として参考に残している。
 
 brilliant.xyz **Halo** スマートグラス用のホストクライアント（Flutter）。
 グラスの HUD に **SF風レティクル（照準）** を中心表示し、カメラ映像を Face API で識別して
